@@ -6,18 +6,19 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { WebSocketServer, WebSocket } from "ws";
 import type { OpenClawConfig } from "openclaw/plugin-sdk/core";
+import type { MarkdownTableMode } from "openclaw/plugin-sdk/config-contracts";
 import {
   createTypingCallbacks,
   createReplyPrefixOptions,
-} from "openclaw/plugin-sdk/matrix";
+  waitUntilAbort,
+} from "openclaw/plugin-sdk/channel-outbound";
 import {
   resolveDirectDmAuthorizationOutcome,
   resolveSenderCommandAuthorizationWithRuntime,
-} from "openclaw/plugin-sdk/command-auth";
+} from "./compat/command-auth.js";
 import { resolveOutboundMediaUrls } from "openclaw/plugin-sdk/reply-payload";
-import { resolveDefaultGroupPolicy } from "openclaw/plugin-sdk/config-runtime";
-import { resolveInboundRouteEnvelopeBuilderWithRuntime } from "openclaw/plugin-sdk/googlechat";
-import { waitUntilAbort } from "openclaw/plugin-sdk/channel-lifecycle";
+import { resolveDefaultGroupPolicy } from "openclaw/plugin-sdk/runtime-group-policy";
+import { resolveInboundRouteEnvelopeBuilderWithRuntime } from "openclaw/plugin-sdk/inbound-envelope";
 
 // createScopedPairingAccess is not available from a public SDK subpath;
 // inline a thin wrapper over core.channel.pairing methods.
@@ -188,7 +189,7 @@ function extractFileName(url: string): string {
 /** Download a URL and convert to wav using ffmpeg. Returns the wav file path. */
 async function downloadAndConvertToWav(
   url: string,
-  fetcher: (params: { url: string; maxBytes: number }) => Promise<{ buffer: Buffer; contentType: string }>,
+  fetcher: (params: { url: string; maxBytes: number }) => Promise<{ buffer: Buffer; contentType?: string }>,
   maxBytes: number,
 ): Promise<string | undefined> {
   const fetched = await fetcher({ url, maxBytes });
@@ -400,7 +401,7 @@ async function processMessage(
       );
       if (wavPath) {
         try {
-          const result = await core.stt.transcribeAudioFile({
+          const result = await core.mediaUnderstanding.transcribeAudioFile({
             filePath: wavPath,
             cfg: config,
             mime: "audio/wav",
@@ -468,7 +469,7 @@ async function processMessage(
       configuredAllowFrom: configAllowFrom,
       configuredGroupAllowFrom: groupAllowFrom,
       senderId,
-      isSenderAllowed: isNapCatSenderAllowed,
+      isSenderAllowed: isNapCatSenderAllowed as (senderId: string, allowFrom: unknown) => boolean,
       readAllowFromStore: pairing.readAllowFromStore,
       runtime: core.channel.commands,
     });
@@ -640,7 +641,7 @@ async function deliverNapCatReply(params: {
   replyToMessageId?: number;
 }): Promise<void> {
   const { payload, account, chatId, isGroup, runtime, core, config, statusSink } = params;
-  const tableMode = params.tableMode ?? "code";
+  const tableMode = (params.tableMode ?? "code") as MarkdownTableMode;
   const text = core.channel.text.convertMarkdownTables(payload.text ?? "", tableMode);
   const mediaUrls = resolveOutboundMediaUrls(payload);
 

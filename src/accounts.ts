@@ -1,10 +1,10 @@
-import type { OpenClawConfig } from "openclaw/plugin-sdk/core";
+import type { OpenClawConfig } from "openclaw/plugin-sdk/config-contracts";
 import { DEFAULT_ACCOUNT_ID, normalizeAccountId } from "openclaw/plugin-sdk/account-id";
 import { normalizeSecretInputString } from "openclaw/plugin-sdk/secret-input";
 import type { NapCatAccountConfig, NapCatConfig, ResolvedNapCatAccount } from "./types.js";
 
 function getNapCatSection(cfg: OpenClawConfig): NapCatConfig | undefined {
-  return (cfg as Record<string, unknown>).channels?.napcat as NapCatConfig | undefined;
+  return  (cfg as { channels?: { napcat?: unknown } }).channels?.napcat as NapCatConfig | undefined;
 }
 
 function mergeNapCatAccountConfig(

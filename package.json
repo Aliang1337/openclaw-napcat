@@ -8,6 +8,12 @@
     "type": "git",
     "url": "https://github.com/Aliang1337/openclaw-napcat.git"
   },
+  "files":[
+    "dist",
+    "openclaw.plugin.json",
+    "README.md",
+    "package.json"
+  ],
   "keywords": [
     "openclaw",
     "openclaw-plugin",
@@ -16,6 +22,12 @@
     "onebot",
     "chatbot"
   ],
+  "scripts": {
+    "build":"tsc",
+    "watch":"tsc -w",
+    "prepack":"npm run build",
+    "pack": "npm pack"
+  },
   "dependencies": {
     "ws": "^8.18.0"
   },
@@ -24,7 +36,7 @@
   },
   "openclaw": {
     "extensions": [
-      "./index.ts"
+      "./dist/index.js"
     ],
     "channel": {
       "id": "napcat",
@@ -45,5 +57,10 @@
       "localPath": "extensions/napcat",
       "defaultChoice": "npm"
     }
+  },
+  "devDependencies": {
+    "@types/ws": "^8.18.2",
+    "openclaw": "^2026.10.9",
+    "typescript": "^7.0.2"
   }
 }

@@ -17,7 +17,7 @@ import { buildAccountScopedDmSecurityPolicy, collectOpenProviderGroupPolicyWarni
 import { buildBaseAccountStatusSnapshot } from "openclaw/plugin-sdk/status-helpers";
 import { buildTokenChannelStatusSummary } from "openclaw/plugin-sdk/channel-status";
 import { buildChannelSendResult } from "openclaw/plugin-sdk/channel-send-result";
-import { createAccountStatusSink } from "openclaw/plugin-sdk/channel-lifecycle";
+import { createAccountStatusSink } from "openclaw/plugin-sdk/channel-outbound";
 import { mapAllowFromEntries } from "openclaw/plugin-sdk/channel-config-helpers";
 import { formatAllowFromLowercase } from "openclaw/plugin-sdk/allow-from";
 import { isNumericTargetId, sendPayloadWithChunkedTextAndMedia } from "openclaw/plugin-sdk/reply-payload";
@@ -44,8 +44,8 @@ import {
   listNapCatAccountIds,
   resolveDefaultNapCatAccountId,
   resolveNapCatAccount,
-  type ResolvedNapCatAccount,
 } from "./accounts.js";
+import type { ResolvedNapCatAccount } from "./types.js";
 import { NapCatChannelConfigSchema } from "./config-schema.js";
 import { createNapCatAgentTools } from "./tools.js";
 import { probeNapCat } from "./probe.js";
@@ -71,28 +71,6 @@ function normalizeNapCatMessagingTarget(raw: string): string | undefined {
   return trimmed.replace(/^(napcat|qq|onebot):/i, "");
 }
 
-export const napCatDock = {
-  id: "napcat",
-  capabilities: {
-    chatTypes: ["direct", "group"],
-    media: true,
-    blockStreaming: true,
-  },
-  outbound: { textChunkLimit: 4500 },
-  config: {
-    resolveAllowFrom: ({ cfg, accountId }) =>
-      mapAllowFromEntries(resolveNapCatAccount({ cfg, accountId }).config.allowFrom),
-    formatAllowFrom: ({ allowFrom }) =>
-      formatAllowFromLowercase({ allowFrom, stripPrefixRe: /^(napcat|qq|onebot):/i }),
-  },
-  groups: {
-    resolveRequireMention: () => true,
-  },
-  threading: {
-    resolveReplyToMode: () => "off",
-  },
-};
-
 export const napCatPlugin: ChannelPlugin<ResolvedNapCatAccount> = {
   id: "napcat",
   meta,
@@ -107,7 +85,7 @@ export const napCatPlugin: ChannelPlugin<ResolvedNapCatAccount> = {
   },
   reload: { configPrefixes: ["channels.napcat"] },
   configSchema: NapCatChannelConfigSchema,
-  agentTools: ({ cfg }) => (cfg ? createNapCatAgentTools(cfg) : []),
+  agentTools: ({ cfg }) => (cfg ? createNapCatAgentTools(cfg) : [] ) as any,
   config: {
     listAccountIds: (cfg) => listNapCatAccountIds(cfg),
     resolveAccount: (cfg, accountId) => resolveNapCatAccount({ cfg, accountId }),
@@ -155,7 +133,7 @@ export const napCatPlugin: ChannelPlugin<ResolvedNapCatAccount> = {
     collectWarnings: ({ account, cfg }) => {
       return collectOpenProviderGroupPolicyWarnings({
         cfg,
-        providerConfigPresent: (cfg as Record<string, unknown>).channels?.napcat !== undefined,
+        providerConfigPresent: (cfg as { channels?: { napcat?: unknown } }).channels?.napcat !== undefined,
         configuredGroupPolicy: account.config.groupPolicy,
         collect: (groupPolicy) => {
           if (groupPolicy !== "open") return [];
@@ -278,14 +256,17 @@ export const napCatPlugin: ChannelPlugin<ResolvedNapCatAccount> = {
         emptyResult: { channel: "napcat", messageId: "" },
       }),
     sendText: async ({ to, text, accountId, cfg }) => {
-      const result = await sendMessageNapCat(to, text, { accountId, cfg });
+      const result = await sendMessageNapCat(to ?? undefined, text ?? "", { accountId: accountId ?? undefined, cfg });
       return buildChannelSendResult("napcat", result);
     },
     sendMedia: async ({ to, text, mediaUrl, accountId, cfg }) => {
-      const result = await sendMessageNapCat(to, text, { accountId, cfg, mediaUrl });
+      const result = await sendMessageNapCat(to ?? undefined, text ?? "", { 
+        accountId: accountId ?? undefined, 
+        cfg, 
+        mediaUrl: mediaUrl ?? undefined 
+      });
       return buildChannelSendResult("napcat", result);
-    },
-  },
+    },  },
   status: {
     defaultRuntime: {
       accountId: DEFAULT_ACCOUNT_ID,
