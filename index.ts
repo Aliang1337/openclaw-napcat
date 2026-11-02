@@ -1,6 +1,6 @@
 import type { OpenClawPluginApi } from "openclaw/plugin-sdk/core";
 import { emptyPluginConfigSchema } from "openclaw/plugin-sdk/core";
-import { napCatDock, napCatPlugin } from "./src/channel.js";
+import { napCatPlugin } from "./src/channel.js";
 import { setNapCatRuntime } from "./src/runtime.js";
 
 const plugin = {
@@ -10,7 +10,7 @@ const plugin = {
   configSchema: emptyPluginConfigSchema(),
   register(api: OpenClawPluginApi) {
     setNapCatRuntime(api.runtime);
-    api.registerChannel({ plugin: napCatPlugin, dock: napCatDock });
+    api.registerChannel({ plugin: napCatPlugin });
   },
 };
 

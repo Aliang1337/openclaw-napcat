@@ -1,5 +1,15 @@
 import type { OpenClawConfig } from "openclaw/plugin-sdk/core";
-import type { ChannelAgentTool } from "openclaw/plugin-sdk/channel-contract";
+import type { ChannelAgentTool as StrictChannelAgentTool } from "openclaw/plugin-sdk/channel-contract";
+
+type ChannelAgentTool = Omit<StrictChannelAgentTool, "execute"> & {
+  ownerOnly?: boolean;
+  execute?: (
+    toolCallId: string,
+    params: any,
+    signal?: any,
+    onUpdate?: any,
+  ) => Promise<any>;
+};
 import { callOneBotApi, sendGroupMsg, sendPrivateMsg, textSegment, imageSegment, recordSegment, videoSegment, uploadGroupFile, uploadPrivateFile } from "./api.js";
 import { resolveNapCatAccount } from "./accounts.js";
 
@@ -1540,8 +1550,9 @@ export function createQQSetGroupRemarkTool(cfg: OpenClawConfig): ChannelAgentToo
 // ---------------------------------------------------------------------------
 
 /** Build all NapCat agent tools. */
+/** Build all NapCat agent tools. */
 export function createNapCatAgentTools(cfg: OpenClawConfig): ChannelAgentTool[] {
-  return [
+  const rawTools: ChannelAgentTool[] = [
     // Query tools
     createQQLikeTool(cfg),
     createQQGetUserInfoTool(cfg),
@@ -1601,4 +1612,21 @@ export function createNapCatAgentTools(cfg: OpenClawConfig): ChannelAgentTool[] 
     createQQHandleFriendRequestTool(cfg),
     createQQHandleGroupRequestTool(cfg),
   ];
+
+  // 核心修复：统一拦截 execute，自动补齐新版 SDK 必需的 details 字段
+  return rawTools.map((tool) => {
+    const originalExecute = tool.execute;
+    if (!originalExecute) return tool;
+
+    return {
+      ...tool,
+      execute: (async (toolCallId: string, params: unknown, signal?: AbortSignal, onUpdate?: any) => {
+        const result = await originalExecute(toolCallId, params, signal, onUpdate);
+        return {
+          ...result,
+          details: (result as any).details ?? {}, // 如果没有 details，就塞一个空对象
+        };
+      }) as any, // 使用 as any 绕过新旧版本的返回值类型推导差异
+    };
+  });
 }

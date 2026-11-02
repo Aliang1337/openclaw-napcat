@@ -1,0 +1,33 @@
+# This workflow will do a clean installation of node dependencies, cache/restore them, build the source code and run tests across different versions of node
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-nodejs
+
+name: Build-And-Pack
+
+on: [push,pull_request]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install Node.js 26
+      run: |
+        export NVM_DIR="$HOME/.nvm"
+        [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+        nvm install 26
+        nvm use 26
+        node -v
+        npm -v
+    - run: npm ci --include=dev
+    - run: npm run build --if-present
+    - name: Pack Package
+      run: npm pack
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: Package And Javascript
+        path: |
+          dist/
+          *.tgz
